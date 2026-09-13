@@ -198,7 +198,7 @@ entity:SetCallback("OnEnterRoom", function(room: Model, firstTime: boolean)
 					end
 				end)
  
-				wait(1)
+				wait(0.5)
  
 				if freezeConnection then
 					freezeConnection:Disconnect()
