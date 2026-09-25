@@ -67,41 +67,20 @@ pcall(function()
 	camShake:ShakeOnce(10, 3, 0.1, 6)
 end)
  
+-- Delay là 1 con số cụ thể (ví dụ: 2 giây) thay vì một bảng
+local delayTime = Random.new():NextInteger(0.01 , 2)
 task.wait(2.8)
-
--- Hàm xử lý xóa node trung gian của phòng
-local function simplifyRoomNodes(room)
-	local nodes = room:FindFirstChild("Nodes")
-	if nodes then
-		local allNodes = nodes:GetChildren()
-		if #allNodes > 1 then
-			table.sort(allNodes, function(a, b)
-				return (tonumber(a.Name) or 0) < (tonumber(b.Name) or 0)
-			end)
-			-- Giữ lại Node đầu và Node cuối, xóa tất cả các node ở giữa
-			for i = 2, #allNodes - 1 do
-				allNodes[i]:Destroy()
-			end
-		end
-	end
-end
-
--- Tối ưu hóa node cho toàn bộ các phòng hiện có
-if game.Workspace:FindFirstChild("CurrentRooms") then
-	for _, room in ipairs(game.Workspace.CurrentRooms:GetChildren()) do
-		simplifyRoomNodes(room)
-	end
-	game.Workspace.CurrentRooms.ChildAdded:Connect(simplifyRoomNodes)
-end
-
+ 
 ---====== Load spawner ======---
+ 
 local Spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/DOORS-Entity-Spawner-V2/main/init.luau"))()
  
 ---====== Create entity ======---
+ 
 local entity = Spawner:Create({
 	Entity = {
 		Name = "Rebound",
-		Asset = "rbxassetid://12254145022",
+		Asset = "rbxassetid://82116817846987",
 		HeightOffset = 1
 	},
 	Lights = {
@@ -122,19 +101,19 @@ local entity = Spawner:Create({
 	},
 	Movement = {
 		Speed = ai,
-		Delay = 2,
+		Delay = delayTime, -- Sửa thành số nguyên
 		Reversed = true
 	},
 	Rebounding = {
 		Enabled = false,
 		Type = "Ambush",
 		Min = 1,
-		Max = 4,
+		Max = 1,
 		Delay = 2
 	},
 	Damage = {
 		Enabled = true,
-		Range = 40,
+		Range = 66,
 		Amount = 100
 	},
 	Crucifixion = {
@@ -144,18 +123,20 @@ local entity = Spawner:Create({
 		Break = true
 	},
 	Death = {
-		Type = "Curious",
+		Type = "Guiding",
 		Hints = {"Death", "Hints", "Go", "Here"},
 		Cause = ""
 	}
 })
  
 ---====== Debug entity ======---
+ 
 entity:SetCallback("OnSpawned", function()
 	print("Entity has spawned")
  
 	light(2, Color3.fromRGB(85, 170, 255), Color3.fromRGB(65, 138, 255))
  
+	-- Tìm Rebound an toàn bằng WaitForChild để tránh lỗi nil
 	local reboundModel = game.Workspace:WaitForChild("Rebound", 5)
 	local reboundRoot = reboundModel and reboundModel:WaitForChild("Root", 3)
  
@@ -197,24 +178,13 @@ end)
 entity:SetCallback("OnEnterRoom", function(room: Model, firstTime: boolean)
 	if firstTime then
 		print("Entity has entered room: ".. room.Name.. " for the first time")
-        
-		-- Xử lý lại phòng lần nữa để đảm bảo không bị sót node
-		simplifyRoomNodes(room)
-
-		local RunService = game:GetService("RunService")
-		local entityModel = workspace:FindFirstChild("Rebound")
-		local entityRoot = entityModel and (entityModel:FindFirstChild("HumanoidRootPart") or entityModel:FindFirstChildWhichIsA("BasePart")) 
-        
-		-- Đảm bảo tắt hoàn toàn va chạm để thực thể lao thẳng qua chướng ngại vật
-		if entityModel then
-			for _, part in ipairs(entityModel:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
-		end
-
 		if ai >= 150 then
+			local RunService = game:GetService("RunService")
+			local TweenService = game:GetService("TweenService")
+ 
+			local entityModel = workspace:FindFirstChild("Rebound")
+			local entityRoot = entityModel and (entityModel:FindFirstChild("HumanoidRootPart") or entityModel:FindFirstChildWhichIsA("BasePart")) 
+ 
 			if entityRoot then
 				local freezeConnection
 				local doorFreezePos = entityRoot.CFrame
@@ -228,12 +198,13 @@ entity:SetCallback("OnEnterRoom", function(room: Model, firstTime: boolean)
 					end
 				end)
  
-				task.wait(1)
+				wait(1)
  
 				if freezeConnection then
 					freezeConnection:Disconnect()
 				end
-			end
+				end
+ 
 		end
 	else
 		print("Entity has entered room: ".. room.Name.. " again")
@@ -274,4 +245,5 @@ entity:SetCallback("OnDamagePlayer", function(newHealth: number)
 end)
  
 ---====== Run entity ======---
+ 
 entity:Run()
