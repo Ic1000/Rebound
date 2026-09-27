@@ -68,7 +68,7 @@ pcall(function()
 end)
  
 -- Delay là 1 con số cụ thể (ví dụ: 2 giây) thay vì một bảng
-local delayTime = Random.new():NextInteger(0.01 , 2)
+local delayTime = Random.new():NextInteger(0.5 , 2)
 task.wait(2.8)
  
 ---====== Load spawner ======---
@@ -113,8 +113,8 @@ local entity = Spawner:Create({
 	},
 	Damage = {
 		Enabled = true,
-		Range = 66,
-		Amount = 100
+		Range = 45,
+		Amount = 125
 	},
 	Crucifixion = {
 		Enabled = true,
