@@ -1,249 +1,311 @@
-local rng = Random.new()
-local ai = rng:NextInteger(100, 200)
- 
-function light(tim, color0, color1)
-	local tweenservice = game:GetService("TweenService")
-	local info = TweenInfo.new(tim, Enum.EasingStyle.Linear)
-	for _, lightObj in pairs(game.Workspace.CurrentRooms:GetDescendants()) do
-		if lightObj:IsA("Light") or lightObj:IsA("SurfaceLight") or lightObj:IsA("SpotLight") then
-			local target = {Color = color1}
-			local anim = tweenservice:Create(lightObj, info, target)
-			anim:Play()
-		end
-		if lightObj:IsA("MeshPart") and lightObj.Material == Enum.Material.Neon and lightObj.Name ~= "Skybox" then
-			local target1 = {Color = color0}
-			local anim2 = tweenservice:Create(lightObj, info, target1)
-			anim2:Play()
-		end
-	end
+--========================================================--
+--                  REBOUND ENTITY SCRIPT                 --
+--========================================================--
+
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Variables
+local maxRebounds = 5
+local reboundCount = 0
+local isJumpscaring = false
+
+-- ====== UTILS & AUDIO ======
+local function GitAud(soundgit, filename)
+    local url = soundgit
+    local FileName = filename
+    pcall(function()
+        writefile(FileName .. ".mp3", game:HttpGet(url))
+    end)
+    return (getcustomasset or getsynasset)(FileName .. ".mp3")
 end
- 
--- Hiệu ứng ánh sáng Lighting
-game.Lighting.MainColorCorrection.TintColor = Color3.fromRGB(61, 171, 98)
-game.Lighting.MainColorCorrection.Contrast = 0.2
-game.Lighting.MainColorCorrection.Saturation = -0.7
- 
-local tween = game:GetService("TweenService")
-tween:Create(game.Lighting.MainColorCorrection, TweenInfo.new(5), {Contrast = 0}):Play()
-tween:Create(game.Lighting.MainColorCorrection, TweenInfo.new(5), {Saturation = 0}):Play()
-tween:Create(game.Lighting.MainColorCorrection, TweenInfo.new(5), {TintColor = Color3.fromRGB(255, 255, 255)}):Play()
- 
--- Âm thanh báo hiệu
-local cue1 = Instance.new("Sound")
-cue1.Parent = game.Workspace
-cue1.Name = "Scream"
-cue1.SoundId = "rbxassetid://9114397505"
- 
-local distort = Instance.new("DistortionSoundEffect", cue1)
-distort.Level = 1
-local distort2 = Instance.new("DistortionSoundEffect", cue1)
-distort2.Level = 1
- 
-local pitch = Instance.new("PitchShiftSoundEffect", cue1)
-pitch.Octave = 0.5
-local pitch2 = Instance.new("PitchShiftSoundEffect", cue1)
-pitch2.Octave = 0.5
-local pitch3 = Instance.new("PitchShiftSoundEffect", cue1)
-pitch3.Octave = 0.5
- 
-cue1.Volume = 2
-cue1:Play()
- 
-local spawnSound = Instance.new("Sound")
-spawnSound.Parent = game.Workspace
-spawnSound.Name = "Spaw5"
-spawnSound.SoundId = "rbxassetid://9114221327"
-spawnSound.Volume = 10
-spawnSound:Play()
- 
--- Rung camera an toàn
-pcall(function()
-	local CameraShaker = require(game.ReplicatedStorage:WaitForChild("CameraShaker"))
-	local camera = game.Workspace.CurrentCamera
-	local camShake = CameraShaker.new(Enum.RenderPriority.Camera.Value, function(shakeCf)
-		camera.CFrame = camera.CFrame * shakeCf
-	end)
-	camShake:Start()
-	camShake:ShakeOnce(10, 3, 0.1, 6)
+
+local function CustomGitSound(soundlink, vol, filename)
+    pcall(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = GitAud(soundlink, filename)
+        sound.Parent = workspace
+        sound.Name = "reboundspawn"
+        sound.Volume = vol or 5
+        sound.PlaybackSpeed = 1
+        sound:Play()
+    end)
+end
+
+-- Camera Shake Setup
+local cameraShaker = require(ReplicatedStorage:WaitForChild("CameraShaker"))
+local camera = workspace.CurrentCamera
+local camShake = cameraShaker.new(Enum.RenderPriority.Camera.Value, function(cf)
+    camera.CFrame = camera.CFrame * cf
 end)
- 
--- Delay là 1 con số cụ thể (ví dụ: 2 giây) thay vì một bảng
-local delayTime = Random.new():NextInteger(0.5 , 2)
-task.wait(2.8)
- 
----====== Load spawner ======---
- 
-local Spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/DOORS-Entity-Spawner-V2/main/init.luau"))()
- 
----====== Create entity ======---
- 
-local entity = Spawner:Create({
-	Entity = {
-		Name = "Rebound",
-		Asset = "rbxassetid://94638439855560",
-		HeightOffset = 1
-	},
-	Lights = {
-		Flicker = {
-			Enabled = false,
-			Duration = 1
-		},
-		Shatter = false,
-		Repair = false
-	},
-	Earthquake = {
-		Enabled = false
-	},
-	CameraShake = {
-		Enabled = true,
-		Range = 100,
-		Values = {5, 15, 0.1, 1}
-	},
-	Movement = {
-		Speed = ai,
-		Delay = delayTime, -- Sửa thành số nguyên
-		Reversed = true
-	},
-	Rebounding = {
-		Enabled = false,
-		Type = "Ambush",
-		Min = 1,
-		Max = 1,
-		Delay = 2
-	},
-	Damage = {
-		Enabled = true,
-		Range = 45,
-		Amount = 125
-	},
-	Crucifixion = {
-		Enabled = true,
-		Range = 40,
-		Resist = false,
-		Break = true
-	},
-	Death = {
-		Type = "Guiding",
-		Hints = {"Death", "Hints", "Go", "Here"},
-		Cause = ""
-	}
-})
- 
----====== Debug entity ======---
- 
-entity:SetCallback("OnSpawned", function()
-	print("Entity has spawned")
- 
-	light(2, Color3.fromRGB(85, 170, 255), Color3.fromRGB(65, 138, 255))
- 
-	-- Tìm Rebound an toàn bằng WaitForChild để tránh lỗi nil
-	local reboundModel = game.Workspace:WaitForChild("Rebound", 5)
-	local reboundRoot = reboundModel and reboundModel:WaitForChild("Root", 3)
- 
-	local spawnSound = Instance.new("Sound")
-	spawnSound.Parent = game.Workspace
-	spawnSound.Name = "Spawn"
-	spawnSound.SoundId = "rbxassetid://9114221327"
-	spawnSound.Volume = 7
-	spawnSound:Play()
- 
-	local function GetGitSound(GithubSnd, SoundName)
-		local filePath = SoundName .. ".mp3"
-		if not isfile(filePath) then
-			writefile(filePath, game:HttpGet(GithubSnd))
-		end
-		local sound = Instance.new("Sound")
-		sound.SoundId = (getcustomasset or getsynasset)(filePath)
-		return sound
-	end
- 
-	pcall(function()
-		local Jumpscare = GetGitSound("https://github.com/check78/worldcuuuup/blob/main/DoomBegin.mp3?raw=true", "Riririririiriri")
-		Jumpscare.Parent = reboundRoot or reboundModel or game.Workspace
-		Jumpscare.Volume = 2
-		Jumpscare.RollOffMinDistance = 100
-		Jumpscare.RollOffMaxDistance = 200
-		Jumpscare.Name = "am"
-		Jumpscare.PlaybackSpeed = 1
-		Jumpscare:Play()
-	end)
-end)
- 
-entity:SetCallback("OnStartMoving", function()
-	print("Entity has started moving")
-	game.ReplicatedStorage.GameData.LatestRoom.Changed:Wait()
-	loadstring(game:HttpGet("https://pastefy.app/cMwE6ROp/raw"))()
-end)
- 
-entity:SetCallback("OnEnterRoom", function(room: Model, firstTime: boolean)
-	if firstTime then
-		print("Entity has entered room: ".. room.Name.. " for the first time")
-		if ai >= 150 then
-			local RunService = game:GetService("RunService")
-			local TweenService = game:GetService("TweenService")
- 
-			local entityModel = workspace:FindFirstChild("Rebound")
-			local entityRoot = entityModel and (entityModel:FindFirstChild("HumanoidRootPart") or entityModel:FindFirstChildWhichIsA("BasePart")) 
- 
-			if entityRoot then
-				local freezeConnection
-				local doorFreezePos = entityRoot.CFrame
- 
-				freezeConnection = RunService.Heartbeat:Connect(function()
-					if entityModel and entityModel.Parent and entityRoot then
-						entityRoot.Anchored = true
-						entityRoot.CFrame = doorFreezePos
-						entityRoot.AssemblyLinearVelocity = Vector3.zero
-						entityRoot.AssemblyAngularVelocity = Vector3.zero
-					end
-				end)
- 
-				wait(1)
- 
-				if freezeConnection then
-					freezeConnection:Disconnect()
-				end
-				end
- 
-		end
-	else
-		print("Entity has entered room: ".. room.Name.. " again")
-	end
-end)
- 
-entity:SetCallback("OnLookAt", function(lineOfSight: boolean)
-	if lineOfSight then
-		print("Player is looking at entity")
-	else
-		print("Player view is obstructed by something")
-	end
-end)
- 
-entity:SetCallback("OnRebounding", function(startOfRebound: boolean)
-	if startOfRebound then
-		print("Entity has started rebounding")
-	else
-		print("Entity has finished rebounding")
-	end
-end)
- 
-entity:SetCallback("OnDespawning", function()
-	print("Entity is despawning")
-end)
- 
-entity:SetCallback("OnDespawned", function()
-	print("Entity has despawned")
-end)
- 
-entity:SetCallback("OnDamagePlayer", function(newHealth: number)
-	if newHealth <= 0 then
-		print("Entity has killed the player")
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Timofey2339/Depth-doors-model/refs/heads/main/Jumpscare/Rebound%20Jumpscare.lua"))()
-	else
-		print("Entity has damaged the player")
-	end
-end)
- 
----====== Run entity ======---
- 
-entity:Run()
+
+-- Asset Loader
+local function LoadCustomInstance(assetId, parent)
+    local model = nil
+    local retryCount = 0
+
+    while not model and retryCount < 5 do
+        retryCount = retryCount + 1
+        local success, result = pcall(function()
+            local loadedObjects = game:GetObjects(assetId)
+            return loadedObjects and loadedObjects[1]
+        end)
+
+        if success and result then
+            model = result
+            model.Parent = parent or workspace
+
+            task.spawn(function()
+                for _, obj in ipairs(model:GetDescendants()) do
+                    if obj:IsA("Script") or obj:IsA("LocalScript") then
+                        obj:Destroy()
+                    end
+                end
+            end)
+
+            pcall(function()
+                model:SetAttribute("LoadedByExecutor", true)
+            end)
+        else
+            task.wait(0.5)
+        end
+    end
+
+    return model
+end
+
+-- ====== MOVEMENT & JUMPSCARE LOGIC ======
+local function MoveRebound()
+    isJumpscaring = false
+    
+    local s = LoadCustomInstance("rbxassetid://94638439855560", workspace)
+    if not s then return end
+
+    local val = 60
+    local killed = false
+    local entity = s:FindFirstChild("Rebound") or s.PrimaryPart or s:FindFirstChildWhichIsA("BasePart")
+    
+    if not entity then
+        s:Destroy()
+        return
+    end
+
+    local gruh = workspace:WaitForChild("CurrentRooms")
+    local latestRoomVal = ReplicatedStorage.GameData.LatestRoom.Value
+
+    reboundCount = reboundCount + 1
+    local directionType = (reboundCount % 2 == 1) and "ExitToEntrance" or "EntranceToExit"
+
+    if directionType == "ExitToEntrance" then
+        local targetRoom = gruh:FindFirstChild(latestRoomVal + 1) or gruh:FindFirstChild(latestRoomVal)
+        if targetRoom and targetRoom:FindFirstChild("RoomExit") then
+            entity.CFrame = targetRoom.RoomExit.CFrame
+        elseif targetRoom and targetRoom:FindFirstChild("RoomEntrance") then
+            entity.CFrame = targetRoom.RoomEntrance.CFrame
+        end
+    else
+        local startRoom = gruh:FindFirstChild(1)
+        if startRoom and startRoom:FindFirstChild("RoomEntrance") then
+            entity.CFrame = startRoom.RoomEntrance.CFrame
+        end
+    end
+
+    task.wait(0.1)
+
+    local function canSeeTarget(target, size)
+        if killed or isJumpscaring then return false end
+        local origin = entity.Position
+        local hrp = target:FindFirstChild("HumanoidRootPart")
+        if not hrp then return false end
+
+        local direction = (hrp.Position - origin).unit * size
+        local ray = Ray.new(origin, direction)
+        local hit = workspace:FindPartOnRay(ray, entity)
+        if hit and hit:IsDescendantOf(target) then
+            killed = true
+            return true
+        end
+        return false
+    end
+
+    task.wait(1)
+
+    local killCheckConnection
+    killCheckConnection = RunService.Heartbeat:Connect(function()
+        if not entity or not entity.Parent then
+            if killCheckConnection then killCheckConnection:Disconnect() end
+            return
+        end
+
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") and not char:GetAttribute("Hiding") then
+            if (entity.Position - char.HumanoidRootPart.Position).Magnitude <= val then
+                camShake:Start()
+                camShake:ShakeOnce(17, 6, 0.1, 1)
+            end
+
+            if canSeeTarget(char, 50) and not isJumpscaring then
+                isJumpscaring = true
+
+                local ReboundJs = Instance.new("ScreenGui")
+                local Static = Instance.new("ImageLabel")
+                local ReboundImg = Instance.new("ImageLabel")
+                local JSSIZE = Instance.new("ImageLabel")
+
+                ReboundJs.Name = "ReboundJs"
+                ReboundJs.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+                Static.Name = "Static"
+                Static.Parent = ReboundJs
+                Static.BackgroundTransparency = 1
+                Static.Size = UDim2.new(11, 0, 111, 0)
+                Static.Image = "rbxassetid://236543215"
+                Static.ImageTransparency = 1
+
+                ReboundImg.Name = "Rebound"
+                ReboundImg.Parent = ReboundJs
+                ReboundImg.BackgroundTransparency = 1
+                ReboundImg.Position = UDim2.new(0.4866, 0, 0.4793, 0)
+                ReboundImg.Size = UDim2.new(0.0267, 0, 0.0387, 0)
+                ReboundImg.Image = "rbxassetid://136184103476873"
+
+                JSSIZE.Name = "JSSIZE"
+                JSSIZE.Parent = ReboundJs
+                JSSIZE.BackgroundTransparency = 1
+                JSSIZE.Position = UDim2.new(-0.586, 0, -1.251, 0)
+                JSSIZE.Size = UDim2.new(2.128, 0, 3.081, 0)
+                JSSIZE.Visible = false
+                JSSIZE.Image = "rbxassetid://136184103476873"
+
+                local jumpscareSound = Instance.new("Sound")
+                jumpscareSound.SoundId = "rbxassetid://109582246349306"
+                jumpscareSound.Volume = 10
+                jumpscareSound.Parent = ReboundJs
+                jumpscareSound:Play()
+
+                task.spawn(function()
+                    while isJumpscaring and ReboundJs.Parent do
+                        Static.Image = "rbxassetid://236543215"
+                        task.wait(0.002)
+                        Static.Rotation = 0
+                        task.wait(0.002)
+                        Static.Rotation = 180
+                        task.wait(0.002)
+                        Static.Image = "rbxassetid://236777652"
+                        task.wait(0.002)
+                        Static.Rotation = 0
+                        task.wait(0.002)
+                        Static.Rotation = 180
+                        task.wait(0.002)
+                    end
+                end)
+
+                task.spawn(function()
+                    TweenService:Create(Static, TweenInfo.new(0.5), {ImageTransparency = 0.8}):Play()
+                    TweenService:Create(ReboundImg, TweenInfo.new(0.5), {Size = JSSIZE.Size, Position = JSSIZE.Position}):Play()
+                    
+                    task.wait(0.3)
+                    local hum = char:FindFirstChildWhichIsA("Humanoid")
+                    if hum then hum:TakeDamage(100) end
+
+                    pcall(function()
+                        ReplicatedStorage.GameStats["Player_" .. LocalPlayer.Name].Total.DeathCause.Value = "Rebound"
+                        ReplicatedStorage.Bricks.DeathHint.OnClientEvent:Fire({
+                            "You died to who you call Rebound...",
+                            "He makes his presence known and keeps coming back...",
+                            "Hide when this happens!"
+                        })
+                    end)
+
+                    task.wait(0.5)
+                    TweenService:Create(Static, TweenInfo.new(1), {ImageTransparency = 1}):Play()
+                    TweenService:Create(ReboundImg, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+                    task.wait(1)
+                    ReboundJs:Destroy()
+                end)
+            end
+        end
+    end)
+
+    if directionType == "ExitToEntrance" then
+        for i = latestRoomVal, 1, -1 do
+            if gruh:FindFirstChild(i) then
+                local room = gruh[i]
+                if room:FindFirstChild("RoomEntrance") then
+                    local a = room.RoomEntrance
+                    local tween = TweenService:Create(entity, TweenInfo.new(1.8, Enum.EasingStyle.Sine), {CFrame = a.CFrame})
+                    tween:Play()
+                    tween.Completed:Wait()
+                end
+            end
+        end
+    else
+        for i = 1, latestRoomVal + 1 do
+            if gruh:FindFirstChild(i) then
+                local room = gruh[i]
+                if room:FindFirstChild("RoomExit") then
+                    local a = room.RoomExit
+                    local tween = TweenService:Create(entity, TweenInfo.new(1.8, Enum.EasingStyle.Sine), {CFrame = a.CFrame})
+                    tween:Play()
+                    tween.Completed:Wait()
+                end
+            end
+        end
+    end
+
+    if killCheckConnection then killCheckConnection:Disconnect() end
+
+    if entity and entity:IsA("BasePart") then
+        entity.Anchored = false
+        entity.CanCollide = false
+    end
+    Debris:AddItem(s, 2)
+end
+
+-- ====== RUN REBOUND SEQUENCE ======
+local function RunReboundSequence()
+    -- 1. Âm thanh cảnh báo
+    CustomGitSound("https://github.com/Anctarus7105/Custom-Sounds/raw/main/ReboundWarning.mp3", 5, "reboundspawn")
+    
+    -- 2. Hiệu ứng ánh sáng & rung màn hình
+    local Warn = Instance.new("ColorCorrectionEffect", game.Lighting)
+    Warn.TintColor = Color3.fromRGB(65, 138, 255)
+    Warn.Saturation = -0.7
+    Warn.Contrast = 0.2
+    
+    TweenService:Create(Warn, TweenInfo.new(15), {
+        TintColor = Color3.fromRGB(255, 255, 255),
+        Saturation = 0,
+        Contrast = 0
+    }):Play()
+
+    camShake:Start()
+    camShake:ShakeOnce(10, 3, 0.1, 6, 2, 0.5)
+    
+    -- 3. Thời gian chờ người chơi trú ẩn
+    task.wait(3)
+
+    reboundCount = 0
+    local currentMax = maxRebounds
+
+    -- 4. Bắt đầu di chuyển
+    pcall(MoveRebound)
+
+    while currentMax > 0 do
+        ReplicatedStorage.GameData.LatestRoom.Changed:Wait()
+        task.wait(2)
+        pcall(MoveRebound)
+        currentMax = currentMax - 1
+    end
+
+    task.wait(5)
+    Warn:Destroy()
+end
+
+-- Kích hoạt thực thể Rebound
+RunReboundSequence()
